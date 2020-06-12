@@ -309,12 +309,6 @@ class CallbackQueryHandler {
 
 
   private async setMenuActive(ctx: ContextMessageUpdate, menu: MenuBuilder) {
-    // if (this.activeMenuMap === menu) {
-    //   if (!menu.changeFlags) {
-    //     return
-    //   }
-    // }
-
     if (menu.changeFlags && !menu.hasChange(Change.Draw) && !menu.hasChange(Change.Text)) {
       await this.updateMenuContent(ctx, menu)
       return
