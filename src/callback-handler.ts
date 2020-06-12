@@ -8,7 +8,7 @@ import { MenuItemBuilder } from './menu-item-builder'
 import type { ButtonActionResult, OnButtonPressFunction, OnGeneratorStepHandler, OnMethodMissingHandler } from './types'
 
 class CallbackQueryHandler {
-  private _isInitialized = false
+  private _isAttached = false
   private _menuMap: WeakMap<any, Dictionary<MenuBuilder>> = new WeakMap()
   private _activeMenuMap: WeakMap<any, MenuBuilder> = new WeakMap()
   private _keeper: any
@@ -61,74 +61,77 @@ class CallbackQueryHandler {
    * _Attaching is done only once per `CallbackQueryHandler`._
    *
    * @param {Telegraf<ContextMessageUpdate>} telegraf Telegraf instance.
+   * @returns {boolean} `true` if the attaching is done.
    * @memberof CallbackQueryHandler
    */
-  attach(telegraf: Telegraf<ContextMessageUpdate>) {
-    if (!this._isInitialized) {
-      this._isInitialized = true
-      const that = this
-      telegraf.on('callback_query', async function onCallbackQuery (ctx) {
-        const { callbackQuery } = ctx
-        if (!callbackQuery) { return }
+  attach(telegraf: Telegraf<ContextMessageUpdate>): boolean {
+    if (this._isAttached) { return false }
 
-        const { data } = callbackQuery
-        if (!data) { return }
+    this._isAttached = true
+    const that = this
+    telegraf.on('callback_query', async function onCallbackQuery(ctx) {
+      const { callbackQuery } = ctx
+      if (!callbackQuery) { return }
 
-        const menuDict = that._menuMap.get(that._keeper)
-        if (!menuDict) { return }
+      const { data } = callbackQuery
+      if (!data) { return }
 
-        const segments = data.split('/').slice(1)
-        const menuId = segments.shift()!
+      const menuDict = that._menuMap.get(that._keeper)
+      if (!menuDict) { return }
 
-        let targetMenu: MenuBuilder | undefined = menuDict[ menuId ]
-        const button = targetMenu?.getMenuItemByPath(data)
-        if (!button) { return }
+      const segments = data.split('/').slice(1)
+      const menuId = segments.shift()!
 
-        that._activeMenu = targetMenu
+      let targetMenu: MenuBuilder | undefined = menuDict[ menuId ]
+      const button = targetMenu?.getMenuItemByPath(data)
+      if (!button) { return }
 
-        try {
-          const fun = button[ 'onPress' ] as OnButtonPressFunction
-          let value: ButtonActionResult
-          if (typeof fun !== 'function') {
-            value = await that._onMethodMissing?.(button.text, button.path, callbackQuery)
+      that._activeMenu = targetMenu
+
+      try {
+        const fun = button[ 'onPress' ] as OnButtonPressFunction
+        let value: ButtonActionResult
+        if (typeof fun !== 'function') {
+          value = await that._onMethodMissing?.(button.text, button.path, callbackQuery)
+        }
+        else {
+          const menu = await targetMenu.toMenu(true)
+          //@ts-ignore
+          value = await fun.call(button, ctx, button.id, button.text, menu)
+        }
+
+        if (isPromise(value)) {
+          value = await value
+        }
+        else if (isGenerator(value)) {
+          if (typeof that._generatorHandler === 'function') {
+            await that._generatorHandler(ctx, value, async function onButtonAction() {
+              return await that.execButtonAction(value, ctx, button, targetMenu!)
+            })
           }
           else {
-            const menu = await targetMenu.toMenu(true)
-            //@ts-ignore
-            value = await fun.call(button, ctx, button.id, button.text, menu)
+            await that.handleGenerator(ctx, value, button, targetMenu)
           }
 
-          if (isPromise(value)) {
-            value = await value
-          }
-          else if (isGenerator(value)) {
-            if (typeof that._generatorHandler === 'function') {
-              await that._generatorHandler(ctx, value, async function onButtonAction() {
-                return await that.execButtonAction(value, ctx, button, targetMenu!)
-              })
-            }
-            else {
-              await that.handleGenerator(ctx, value, button, targetMenu)
-            }
-
-            that._activeMenu = undefined
-            return
-          }
-
-          await that.execButtonAction(value, ctx, button, targetMenu)
           that._activeMenu = undefined
+          return
         }
-        catch (e) {
-          that._activeMenu = undefined
-          if (typeof that._onError === 'function') {
-            that._onError(e)
-          }
-          else {
-            throw e
-          }
+
+        await that.execButtonAction(value, ctx, button, targetMenu)
+        that._activeMenu = undefined
+      }
+      catch (e) {
+        that._activeMenu = undefined
+        if (typeof that._onError === 'function') {
+          that._onError(e)
         }
-      })
-    }
+        else {
+          throw e
+        }
+      }
+    })
+
+    return true
   }
 
   /**
@@ -285,6 +288,16 @@ class CallbackQueryHandler {
    */
   setOnMenuDelete(handler: (id: string) => void) {
     this._onMenuDelete = handler
+  }
+
+  /**
+   * Sets an error handler.
+   *
+   * @param {(e: Error) => void} handler Handler function.
+   * @memberof CallbackQueryHandler
+   */
+  setOnError(handler: (e: Error) => void) {
+    this._onError = handler
   }
 
   /**
