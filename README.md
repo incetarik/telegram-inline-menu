@@ -12,7 +12,7 @@ The example has many examples of usages inside.
 
 # Examples
 ```ts
-import { CBHandler, inlineMenu, IMenu } from 'telegraf-inline-menu'
+import { CBHandler, inlineMenu, IMenu } from 'telegram-inline-menu'
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
