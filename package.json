@@ -1,5 +1,5 @@
 {
-  "name": "telegraf-inline-menu",
+  "name": "telegram-inline-menu",
   "version": "0.0.1",
   "description": "A library for providing inline menus with an ease for Telegraf library based applications.",
   "main": "dist/index.js",
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/incetarik/telegraf-inline-menu.git"
+    "url": "git+https://github.com/incetarik/telegram-inline-menu.git"
   },
   "keywords": [
     "telegraf",
@@ -21,9 +21,9 @@
   "author": "Tarık İnce <incetarik@hotmail.com>",
   "license": "SEE LICENSE IN LICENSE",
   "bugs": {
-    "url": "https://github.com/incetarik/telegraf-inline-menu/issues"
+    "url": "https://github.com/incetarik/telegram-inline-menu/issues"
   },
-  "homepage": "https://github.com/incetarik/telegraf-inline-menu#readme",
+  "homepage": "https://github.com/incetarik/telegram-inline-menu#readme",
   "dependencies": {
     "telegraf": "3.37.0",
     "nanoid": "3.1.9"
