@@ -15,7 +15,10 @@ class CallbackQueryHandler {
   private _onMethodMissing?: OnMethodMissingHandler
   private _onGeneratorValueHandler?: OnGeneratorStepHandler
   private _generatorHandler?: OnGeneratorStepHandler
+  private _activeMenu?: MenuBuilder
   private _onError?: (e: Error) => void
+  private _onMenuDelete?: (id: string) => void
+  private _onMenuClose?: (menuBuilder: MenuBuilder | undefined) => void
 
   /**
    * Determines whether this callback query handler is strict or not.
@@ -81,6 +84,8 @@ class CallbackQueryHandler {
         const button = targetMenu?.getMenuItemByPath(data)
         if (!button) { return }
 
+        that._activeMenu = targetMenu
+
         try {
           const fun = button[ 'onPress' ] as OnButtonPressFunction
           let value: ButtonActionResult
@@ -106,12 +111,15 @@ class CallbackQueryHandler {
               await that.handleGenerator(ctx, value, button, targetMenu)
             }
 
+            that._activeMenu = undefined
             return
           }
 
           await that.execButtonAction(value, ctx, button, targetMenu)
+          that._activeMenu = undefined
         }
         catch (e) {
+          that._activeMenu = undefined
           if (typeof that._onError === 'function') {
             that._onError(e)
           }
@@ -150,7 +158,9 @@ class CallbackQueryHandler {
     if (!previous) { return false }
     if (typeof id === 'object') { id = id.id }
     if (!(id in previous)) { return false }
-    return delete previous[ id ]
+    const state = delete previous[ id ]
+    this._onMenuDelete?.(id)
+    return state
   }
 
   /**
@@ -209,6 +219,8 @@ class CallbackQueryHandler {
     else {
       await ctx.editMessageReplyMarkup(Markup.inlineKeyboard([]))
     }
+
+    this._onMenuClose?.(this._activeMenu)
   }
 
   /**
@@ -265,6 +277,28 @@ class CallbackQueryHandler {
     this._keeper = keeper
   }
 
+  /**
+   * Sets a handler to be executed when a menu is deleted.
+   *
+   * @param {(id: string) => void} handler Handler function.
+   * @memberof CallbackQueryHandler
+   */
+  setOnMenuDelete(handler: (id: string) => void) {
+    this._onMenuDelete = handler
+  }
+
+  /**
+   * Sets a handler to be executed when a menu is closed.
+   *
+   * @param {((menuBuilder: MenuBuilder | undefined) => void)} handler Handler
+   * function.
+   *
+   * @memberof CallbackQueryHandler
+   */
+  setOnMenuClose(handler: (menuBuilder: MenuBuilder | undefined) => void) {
+    this._onMenuClose = handler
+  }
+
   private async handleGenerator(ctx: ContextMessageUpdate, generator: Generator | AsyncGenerator, button: MenuItemBuilder, targetMenu: MenuBuilder) {
     if (typeof generator.next !== 'function') { return generator }
     if (typeof generator.return !== 'function') { return generator }
@@ -306,7 +340,6 @@ class CallbackQueryHandler {
       }
     }
   }
-
 
   private async setMenuActive(ctx: ContextMessageUpdate, menu: MenuBuilder) {
     if (menu.changeFlags && !menu.hasChange(Change.Draw) && !menu.hasChange(Change.Text)) {
