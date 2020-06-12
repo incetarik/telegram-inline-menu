@@ -1,4 +1,4 @@
-# Telegraf Inline Menu (telegraf-inline-menu)
+# Telegraf Inline Menu (telegram-inline-menu)
 
 A package to build and handle telegraf inline keyboard menus.
 
