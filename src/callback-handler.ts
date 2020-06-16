@@ -368,9 +368,44 @@ class CallbackQueryHandler {
       return
     }
 
+    let isUpdating = menu.hasChange(Change.Update)
     const builtMenu = await menu.toMenu()
-    this.activeMenuMap = menu
 
+    if (isUpdating) {
+      if (this._activeMenu) {
+        const { text, buttons } = this._activeMenu
+
+        if (text === builtMenu.text) {
+          for (const key in buttons) {
+            const button = buttons[ key ]
+
+            const hasChange = builtMenu.buttons.some(cols => {
+              return cols.some(item => {
+                if (button.id !== item.callback_data) { return false }
+                if (button.text !== item.text) { return true }
+                if (!button.isPure) { return true }
+                if (button.hide !== item.hide) { return true }
+                return false
+              })
+            })
+
+            if (hasChange) {
+              await ctx.editMessageReplyMarkup(Markup.inlineKeyboard(builtMenu.buttons))
+              return
+            }
+          }
+
+          if (!menu.isCreatedByFunction) { return }
+          const builder = await menu[ '_dynamicBuilder' ]!()
+          const dynamicMenu = await builder.toMenu()
+          await ctx.editMessageReplyMarkup(Markup.inlineKeyboard(dynamicMenu.buttons))
+          this.activeMenuMap = builder
+          return
+        }
+      }
+    }
+
+    this.activeMenuMap = menu
     await ctx.editMessageText(builtMenu.text, Extra.markup(Markup.inlineKeyboard(builtMenu.buttons)))
   }
 
@@ -391,6 +426,7 @@ class CallbackQueryHandler {
       full = button.full,
       close = false,
       closeWith,
+      update = false,
       keepPreviousValue = true,
     } = action
 

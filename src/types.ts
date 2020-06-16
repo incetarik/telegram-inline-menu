@@ -54,6 +54,18 @@ export type ButtonActionResult = undefined | void | {
    * @type {boolean}
    */
   close?: boolean
+
+  /**
+   * Indicates whether an update is required.
+   *
+   * Set this property to true if your menu is dynamically generated and
+   * something inside of the function builds the buttons, so that you want
+   * to build the menu again.
+   *
+   * @type {boolean}
+   */
+  update?: boolean
+
   /**
    * Indicates whether the previous value should be kept in return if another
    * menu will be shown by the `menu` property.
