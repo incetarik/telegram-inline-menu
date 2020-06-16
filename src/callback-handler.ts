@@ -5,7 +5,11 @@ import { isButtonActionResultLike, isGenerator, isPromise } from './helpers'
 import { MenuBuilder } from './menu-builder'
 import { MenuItemBuilder } from './menu-item-builder'
 
-import type { ButtonActionResult, OnButtonPressFunction, OnGeneratorStepHandler, OnMethodMissingHandler } from './types'
+import { nanoid } from 'nanoid'
+import { SYM_VALUE_STACK } from './commons'
+
+const SYM_EXEC_SUCCESS = Symbol('@@buttonActionSuccess')
+const SYM_EXEC_FAIL = Symbol('@@buttonActionFailure')
 
 class CallbackQueryHandler {
   private _isAttached = false
@@ -86,18 +90,21 @@ class CallbackQueryHandler {
       const button = targetMenu?.getMenuItemByPath(data)
       if (!button) { return }
 
+      targetMenu = button.parent
       that._activeMenu = targetMenu
 
       try {
         const fun = button[ 'onPress' ] as OnButtonPressFunction
+        //@ts-ignore
+        const previousValues = targetMenu[ '_getValueStack' ]()
         let value: ButtonActionResult
         if (typeof fun !== 'function') {
-          value = await that._onMethodMissing?.(button.text, button.path, callbackQuery)
+          value = await that._onMethodMissing?.(button.text, button.path, callbackQuery, previousValues)
         }
         else {
           const menu = await targetMenu.toMenu(true)
           //@ts-ignore
-          value = await fun.call(button, ctx, button.id, button.text, menu)
+          value = await fun.call(button, { ctx, id: button.id, text: button.text, menu, previousValues })
         }
 
         if (isPromise(value)) {
@@ -117,8 +124,9 @@ class CallbackQueryHandler {
           return
         }
 
-        await that.execButtonAction(value, ctx, button, targetMenu)
+        const returnValue = await that.execButtonAction(value, ctx, button, targetMenu)
         that._activeMenu = undefined
+        return returnValue
       }
       catch (e) {
         that._activeMenu = undefined
@@ -372,7 +380,7 @@ class CallbackQueryHandler {
   }
 
   private async execButtonAction(action: ButtonActionResult, ctx: ContextMessageUpdate, button: MenuItemBuilder, targetMenu: MenuBuilder) {
-    if (!isButtonActionResultLike(action)) { return false }
+    if (!isButtonActionResultLike(action)) { return SYM_EXEC_FAIL }
     const menuDict = this._menuMap.get(this._keeper)!
 
     const {
@@ -383,10 +391,15 @@ class CallbackQueryHandler {
       full = button.full,
       close = false,
       closeWith,
+      keepPreviousValue = true,
     } = action
 
-    button.setText(text).setHide(hide).setFull(full)
+    let { value } = action
+
+    button.setText(text).setHide(hide as any).setFull(full as any)
     button.parent.text = message
+
+    let isValueAdded = false
 
     if (navigate) {
       let target
@@ -395,10 +408,13 @@ class CallbackQueryHandler {
         if (navigate.startsWith(rootPath)) {
           target = targetMenu.rootMenu.getChildByPath(navigate)
         }
-        else {
+        else if (navigate.startsWith('/')) {
           const firstPart = navigate.slice(1, navigate.indexOf('/', 1))
           const menu = menuDict[ firstPart ]
           target = menu?.getChildByPath(navigate)
+        }
+        else {
+          target = menuDict[ navigate ]
         }
       }
       else if (typeof navigate === 'number') {
@@ -438,7 +454,20 @@ class CallbackQueryHandler {
       await CBHandler.updateMenuContent(ctx, button.parent)
     }
 
-    return true
+    if (typeof value !== 'undefined') {
+      if (keepPreviousValue) {
+        if (!isValueAdded) {
+          //@ts-ignore
+          const valueStack = button.parent[ SYM_VALUE_STACK ]
+          valueStack.pushValue(button.id, value)
+        }
+      }
+
+      //@ts-ignore
+      return button.parent[ SYM_VALUE_STACK ] ?? value
+    }
+
+    return SYM_EXEC_SUCCESS
   }
 
   /**

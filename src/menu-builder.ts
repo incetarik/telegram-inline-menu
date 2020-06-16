@@ -3,6 +3,7 @@ import { resolve } from 'path'
 
 import { CBHandler } from './callback-handler'
 import { Change } from './change.enum'
+import { SYM_VALUE_STACK } from './commons'
 import { Menu } from './menu'
 import { MenuItemBuilder } from './menu-item-builder'
 
@@ -419,7 +420,7 @@ export class MenuBuilder {
 
     this
       .button(buttonText, buttonId)
-      .setOnPress(function navigateToInnerMenu(ctx) {
+      .setOnPress(function navigateToInnerMenu({ ctx }) {
         //@ts-ignore
         return CBHandler.setMenuActive(ctx, builder)
       })
@@ -483,7 +484,7 @@ export class MenuBuilder {
   navigation(text: string, value: string | number, id?: string): MenuItemBuilder {
     const that = this
 
-    return this.button(text, id).setOnPress(function navigate(ctx) {
+    return this.button(text, id).setOnPress(function navigate({ ctx }) {
       if (that._navigationTarget instanceof MenuBuilder) {
         //@ts-ignore
         return CBHandler.setMenuActive(ctx, that._navigationTarget)
@@ -632,6 +633,40 @@ export class MenuBuilder {
   private markChange(change: Change) {
     //@ts-ignore
     this.changeFlags |= change
+  }
+
+
+  private _getValueStack(previous: any | MenuBuilder = []) {
+    if (SYM_VALUE_STACK in this) {
+      //@ts-ignore
+      return this[ SYM_VALUE_STACK ]
+    }
+
+    if (previous instanceof MenuBuilder) {
+      //@ts-ignore
+      previous = previous[ SYM_VALUE_STACK ]
+    }
+
+    if (!('pushValue' in previous)) {
+      Object.defineProperty(previous, 'pushValue', {
+        configurable: false,
+        enumerable: false,
+        value(name: string, value: any) {
+          this[ name ] = value
+          return this.push(value)
+        }
+      })
+    }
+
+    if (!(SYM_VALUE_STACK in this)) {
+      Object.defineProperty(this, SYM_VALUE_STACK, {
+        configurable: false,
+        enumerable: false,
+        value: previous,
+      })
+    }
+
+    return previous
   }
 
   /**

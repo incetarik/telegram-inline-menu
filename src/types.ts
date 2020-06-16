@@ -54,11 +54,27 @@ export type ButtonActionResult = undefined | void | {
    * @type {boolean}
    */
   close?: boolean
+  /**
+   * Indicates whether the previous value should be kept in return if another
+   * menu will be shown by the `menu` property.
+   *
+   * `true` by default.
+   *
+   * @type {boolean}
+   */
+  keepPreviousValue?: boolean
+
+  /**
+   * Any extra value to carry to next calls or to return with.
+   *
+   * @type {*}
+   */
+  value?: any
 }
 
 export type MenuOpts = { text: string, buttonText: string, id?: string, buttonId?: string, full: boolean, hide: boolean }
 
-export type OnButtonPressFunction<T extends ButtonActionResult = ButtonActionResult> = (
+export type OnButtonPressFunction<T extends ButtonActionResult = ButtonActionResult> = (params: {
   /**
    * The Context.
    */
@@ -77,8 +93,15 @@ export type OnButtonPressFunction<T extends ButtonActionResult = ButtonActionRes
   /**
    * The menu containing the button.
    */
-  menu: Readonly<Menu>
-) => ButtonActionResult | Promise<ButtonActionResult> | Generator<T> | AsyncGenerator<T>
+  menu: Readonly<Menu>,
+
+  /**
+   * The previous values returned from the previous calls.
+   *
+   * @type {any[]}
+   */
+  previousValues?: any[]
+}) => ButtonActionResult | Promise<ButtonActionResult> | Generator<T> | AsyncGenerator<T>
 
 export interface IMenuButtonState {
   full?: boolean
@@ -190,7 +213,12 @@ export type OnMethodMissingHandler = (
    * The callback query object.
    * @type {CallbackQuery}
    */
-  callbackQuery: CallbackQuery
+  callbackQuery: CallbackQuery,
+
+  /**
+   * The previous values of the calls.
+   */
+  previousValues: any[]
 ) => ButtonActionResult | Promise<ButtonActionResult>
 
 /**
