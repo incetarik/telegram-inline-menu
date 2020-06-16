@@ -24,6 +24,7 @@ export class MenuBuilder {
   private readonly _menuById!: Dictionary<MenuBuilder>
   private readonly _menuByIndex!: MenuBuilder[]
   private readonly _menuByPath!: Dictionary<MenuBuilder>
+  private readonly _dynamicBuilder?: Func<MenuBuilder>
 
   /**
    * The root menu of this menu group.
@@ -97,6 +98,16 @@ export class MenuBuilder {
   get path(): string {
     if (this._path) { return this._path }
     return `${this._parent?.path ?? '/'}${this.id}/`
+  }
+
+  /**
+   * Indicates whether the menu is dynamic and created by a function.
+   *
+   * @readonly
+   * @memberof MenuBuilder
+   */
+  get isCreatedByFunction() {
+    return typeof this._dynamicBuilder === 'function'
   }
 
   /**
@@ -673,6 +684,54 @@ export class MenuBuilder {
     this.changeFlags |= change
   }
 
+  private _detach() {
+    const { _parent } = this
+    if (_parent) {
+      const index = _parent._children!.indexOf(this)
+      if (index >= 0) {
+        _parent._children!.splice(index, 1)
+      }
+    }
+
+    delete this._menuById[ this.id ]
+    delete this._menuByPath[ this.path ]
+    const index = this._menuByIndex.indexOf(this, this.index - 1)
+    if (index >= 0) {
+      this._menuByIndex.splice(index, 1)
+    }
+
+    this[ '_getValueStack' ]().splice(0)
+
+    //@ts-ignore
+    this._parent = undefined
+  }
+
+  private _attach(to: MenuBuilder) {
+    //@ts-ignore
+    this._parent = to
+    this._path = undefined
+
+    //@ts-ignore
+    this._menuById = to._menuById
+
+    //@ts-ignore
+    this._menuByIndex = to._menuByIndex
+
+    //@ts-ignore
+    this._menuByPath = to._menuByPath
+
+    if (!Array.isArray(to[ '_children' ])) {
+      to[ '_children' ] = []
+    }
+
+    to[ '_children' ].push(this)
+    to[ '_menuById' ][ this.id ] = this
+    to[ '_menuByPath' ][ this.path ] = this
+    to[ '_menuByIndex' ].push(this)
+
+    //@ts-ignore
+    this[ 'index' ] = to[ '_menuByIndex' ].length - 1
+  }
 
   private _getValueStack(previous: any | MenuBuilder = []) {
     if (SYM_VALUE_STACK in this) {

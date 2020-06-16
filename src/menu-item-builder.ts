@@ -13,11 +13,22 @@ export class MenuItemBuilder {
   private _fullFunction?: Func<Promise<boolean> | boolean>
   private _hideFunction?: Func<Promise<boolean> | boolean>
   private _builtItem?: (CallbackButton | UrlButton) & { full: boolean }
+  private _dynamicMenu?: MenuBuilder
 
   private readonly _layout!: IMenuButton
 
   //@ts-ignore It is used externally, not in this class.
   private onPress?: Func
+
+  private get dynamicMenu() {
+    return this._dynamicMenu
+  }
+
+  private set dynamicMenu(to: MenuBuilder | undefined) {
+    //@ts-ignore
+    this._dynamicMenu?._detach()
+    this._dynamicMenu = to
+  }
 
   /**
    * Indicates whether the button is pure, none of its properties are depending

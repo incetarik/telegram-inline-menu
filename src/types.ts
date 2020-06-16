@@ -67,6 +67,13 @@ export type ButtonActionResult = undefined | void | {
   update?: boolean
 
   /**
+   * Indicates that another menu should be shown to the user.
+   *
+   * @type {IMenu | ((id: string, previousValue: any[]) => IMenu | Promise<IMenu>)}
+   */
+  menu?: IMenu | ((this: IDynamicMenuContext, id: string, previousValue: any[]) => IMenu | Promise<IMenu>)
+
+  /**
    * Indicates whether the previous value should be kept in return if another
    * menu will be shown by the `menu` property.
    *
@@ -241,3 +248,78 @@ export type OnGeneratorStepHandler = (
   value: any,
   buttonActionExecuter: (value: ButtonActionResult) => Promise<boolean>
 ) => any
+
+export interface IDynamicMenuContext {
+  /**
+   * The ID of the dynamic menu.
+   *
+   * @type {string}
+   * @memberof IDynamicMenuContext
+   */
+  readonly id: string
+
+  /**
+   * The path of the dynamic menu.
+   *
+   * @type {string}
+   * @memberof IDynamicMenuContext
+   */
+  readonly path: string
+
+  /**
+   * The information about the parent menu.
+   *
+   * @type {{
+   *     readonly id: string
+   *     readonly index: number
+   *     readonly isPure: boolean
+   *     readonly text: string
+   *     readonly path: string
+   *   }}
+   * @memberof IDynamicMenuContext
+   */
+  readonly parent: {
+    /**
+     * The ID of the parent menu.
+     *
+     * @type {string}
+     */
+    readonly id: string
+
+    /**
+     * The index of the parent menu.
+     *
+     * @type {number}
+     */
+    readonly index: number
+
+    /**
+     * Indicates whether the parent menu is pure or not.
+     *
+     * @type {boolean}
+     */
+    readonly isPure: boolean
+
+    /**
+     * The text of the parent menu.
+     *
+     * @type {string}
+     */
+    readonly text: string
+
+    /**
+     * The path of the parent menu.
+     *
+     * @type {string}
+     */
+    readonly path: string
+  }
+
+  /**
+   * Indicates whether the dynamic menu should be detached after usage.
+   *
+   * @type {boolean}
+   * @memberof IDynamicMenuContext
+   */
+  willDetach: boolean
+}

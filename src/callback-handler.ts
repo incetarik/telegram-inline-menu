@@ -5,6 +5,7 @@ import { isButtonActionResultLike, isGenerator, isPromise } from './helpers'
 import { MenuBuilder } from './menu-builder'
 import { MenuItemBuilder } from './menu-item-builder'
 
+import type { ButtonActionResult, OnButtonPressFunction, OnGeneratorStepHandler, OnMethodMissingHandler, IDynamicMenuContext } from './types'
 import { nanoid } from 'nanoid'
 import { SYM_VALUE_STACK } from './commons'
 
@@ -426,6 +427,7 @@ class CallbackQueryHandler {
       full = button.full,
       close = false,
       closeWith,
+      menu,
       update = false,
       keepPreviousValue = true,
     } = action
@@ -480,6 +482,89 @@ class CallbackQueryHandler {
         this.deleteMenu(button.parent)
       }
     }
+    else if (typeof menu === 'object') {
+      const { parent } = button
+      let builtMenu = button[ 'dynamicMenu' ]
+
+      if (builtMenu) {
+        builtMenu[ '_detach' ]()
+        builtMenu = undefined
+      }
+
+      if (!builtMenu) {
+        if (!menu.id) {
+          menu.id = nanoid(8)
+        }
+
+        builtMenu = MenuBuilder.fromObject(menu)
+        button[ 'dynamicMenu' ] = builtMenu
+        builtMenu[ '_attach' ](parent)
+
+        if (keepPreviousValue) {
+          const valueStack = parent[ '_getValueStack' ]()
+          valueStack.pushValue(button.id, value)
+          isValueAdded = true
+
+          builtMenu[ '_getValueStack' ](valueStack)
+        }
+      }
+
+      await CBHandler.setMenuActive(ctx, builtMenu)
+    }
+    else if (typeof menu === 'function') {
+      const { parent } = button
+      //@ts-ignore
+      const currentValues: any[] = parent[ '_getValueStack' ]()
+      const dynamicContext = makeDynamicMenuContext(parent, button[ 'dynamicMenu' ]?.id)
+      const menuLayout = await menu.call(dynamicContext, dynamicContext.id, currentValues)
+      menuLayout.id = dynamicContext.id
+
+      let builtMenu = button[ 'dynamicMenu' ]
+      if (builtMenu) {
+        builtMenu[ '_detach' ]()
+        builtMenu = undefined
+      }
+
+      builtMenu = MenuBuilder.fromObject(menuLayout)
+
+      //@ts-ignore
+      builtMenu[ '_dynamicBuilder' ] = async function dynamicMenuBuilder() {
+        const newLayout = await menu.call(dynamicContext, dynamicContext.id, currentValues)
+        newLayout.id = dynamicContext.id
+
+        const newMenu = MenuBuilder.fromObject(newLayout)
+
+        //@ts-ignore
+        newMenu[ 'changeFlags' ] = Change.Draw
+        //@ts-ignore
+        newMenu[ '_dynamicBuilder' ] = dynamicMenuBuilder
+
+        button[ 'dynamicMenu' ] = newMenu
+        newMenu[ '_attach' ](parent)
+
+        return newMenu
+      }
+
+      //@ts-ignore
+      builtMenu[ 'changeFlags' ] = Change.Draw
+      button[ 'dynamicMenu' ] = builtMenu
+      builtMenu[ '_attach' ](parent)
+
+      if (keepPreviousValue) {
+        const valueStack = parent[ '_getValueStack' ]()
+        valueStack.push(value)
+        isValueAdded = true
+
+        builtMenu[ '_getValueStack' ](valueStack)
+      }
+
+      await CBHandler.setMenuActive(ctx, builtMenu)
+    }
+    else if (update) {
+      //@ts-ignore
+      targetMenu.changeFlags = Change.Update
+      await CBHandler.setMenuActive(ctx, targetMenu)
+    }
     else if ((button.parent.changeFlags & Change.Text) === Change.Text) {
       await CBHandler.setMenuActive(ctx, button.parent)
     }
@@ -526,3 +611,18 @@ export const CBHandler = new CallbackQueryHandler()
 //@ts-ignore
 CallbackQueryHandler.instance = CBHandler
 CBHandler.setMenuKeeper(CBHandler)
+
+function makeDynamicMenuContext(parent: MenuBuilder, id = nanoid(12)): IDynamicMenuContext {
+  return {
+    id,
+    path: `${parent.path}${id}/`,
+    parent: {
+      id: parent.id,
+      index: parent.index,
+      isPure: parent.isPure,
+      text: parent.text,
+      path: parent.path,
+    },
+    willDetach: true,
+  }
+}

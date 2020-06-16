@@ -47,6 +47,8 @@ export function isButtonActionResultLike(value: any): value is ButtonActionResul
   if (typeof value.message === 'string') { return true }
   if (typeof value.closeWith === 'string') { return true }
   if (typeof value.close === 'boolean') { return true }
+  if (typeof value.menu === 'object') { return true }
+  if (typeof value.menu === 'function') { return true }
   if (typeof value.value !== 'undefined') { return true }
   if (typeof value.update === 'boolean') { return true }
   return false
