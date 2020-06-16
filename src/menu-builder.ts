@@ -100,6 +100,17 @@ export class MenuBuilder {
   }
 
   /**
+   * Indicates whether the menu has changed or not.
+   *
+   * @readonly
+   * @type {boolean}
+   * @memberof MenuBuilder
+   */
+  get isChanged(): boolean {
+    return this.changeFlags !== Change.None
+  }
+
+  /**
    * The text of the menu.
    *
    * **NOTE**: If this is being assigned to an empty string, it will be ignored.
@@ -125,6 +136,33 @@ export class MenuBuilder {
    */
   hasChange(change: Change) {
     return (this.changeFlags & change) === change
+  }
+
+  /**
+   * Indicates whether this menu has any of given changes or not.
+   *
+   * @param {...Change[]} changes Changes to check.
+   * @returns `true` if any of those properties of the menu has changed.
+   * @memberof MenuBuilder
+   */
+  hasAnyChange(...changes: Change[]) {
+    const { changeFlags } = this
+    for (const change of changes) {
+      if ((changeFlags & change) === change) { return true }
+    }
+
+    return false
+  }
+
+  /**
+   * Indicates whether this menu has all of given changes or not.
+   *
+   * @param {...Change[]} changes Changes to check.
+   * @returns `true` if all of those properties of the menu has changed.
+   * @memberof MenuBuilder
+   */
+  hasChanges(...changes: Change[]) {
+    return this.hasChange(changes.reduce((left, right) => left | right, 0))
   }
 
   /**

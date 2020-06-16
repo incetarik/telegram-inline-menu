@@ -29,4 +29,10 @@ export const enum Change {
    * Indicates that the item is not built yet and needs to be drawn first.
    */
   Draw = 1 << 3,
+
+  /**
+   * Indicates that the item should be updated, hence it will check whether
+   * the text and/or buttons are changed or not.
+   */
+  Update = 1 << 4,
 }
