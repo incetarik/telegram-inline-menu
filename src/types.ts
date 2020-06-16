@@ -15,9 +15,9 @@ export type ButtonActionResult = undefined | void | {
   /**
    * Indicates that the button should be hidden or not in next frame.
    *
-   * @type {boolean}
+   * @type {boolean | Func<Promise<boolean> | boolean>}
    */
-  hide?: boolean
+  hide?: boolean | Func<Promise<boolean> | boolean>
 
   /**
    * The new text of the button to update in next frame.
@@ -30,9 +30,9 @@ export type ButtonActionResult = undefined | void | {
    * Indicates whether the button should be full-wide (row) or not in the
    * next frame.
    *
-   * @type {boolean}
+   * @type {boolean | Func<Promise<boolean> | boolean>}
    */
-  full?: boolean
+  full?: boolean | Func<Promise<boolean> | boolean>
 
   /**
    * The new message to update in next frame of the related markup.
