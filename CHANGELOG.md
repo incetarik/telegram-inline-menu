@@ -1,3 +1,8 @@
+# 0.1.2
+## Fixed
+- Updating a dynamic menu from a button is not updating the menu due to the
+updates on the same object, so the changes can't be tracked.
+
 # 0.1.1
 ## Added
 - Documentation for `full` and `hide` properties of menu buttons.
