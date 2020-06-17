@@ -1,3 +1,16 @@
+# 0.1.1
+## Added
+- Documentation for `full` and `hide` properties of menu buttons.
+- Dynamic menu creation at the beginning. Now `inlineMenu` may take a function
+that generates a menu and when a button inside of that menu returns an object
+with its `update` property is `true`, the function will be executed again to
+re-draw the menu to replace.
+
+## Fixed
+- The ID of dynamically generated button was not used in comparison of change
+detection.
+
+
 # 0.1.0
 ## Added
 - `CallbackQueryHandler.setOnError` function to catch errors.
