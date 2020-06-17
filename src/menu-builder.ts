@@ -3,7 +3,9 @@ import { resolve } from 'path'
 
 import { CBHandler } from './callback-handler'
 import { Change } from './change.enum'
-import { SYM_VALUE_STACK } from './commons'
+import {
+  SYM_DYNAMIC_MENU_BUILDER, SYM_FIRST_DYNAMIC_DRAW, SYM_VALUE_STACK
+} from './commons'
 import { Menu } from './menu'
 import { MenuItemBuilder } from './menu-item-builder'
 
