@@ -123,8 +123,21 @@ export type OnButtonPressFunction<T extends ButtonActionResult = ButtonActionRes
 }) => ButtonActionResult | Promise<ButtonActionResult> | Generator<T> | AsyncGenerator<T>
 
 export interface IMenuButtonState {
-  full?: boolean
-  hide?: boolean
+  /**
+   * Indicates whether the menu button is full or not.
+   *
+   * @type {(boolean | Func<Promise<boolean> | boolean>)}
+   * @memberof IMenuButtonState
+   */
+  full?: boolean | Func<Promise<boolean> | boolean> //(() => boolean | Promise<boolean>)
+
+  /**
+   * Indicates whether the menu button is hidden or not.
+   *
+   * @type {(boolean | Func<Promise<boolean> | boolean>)}
+   * @memberof IMenuButtonState
+   */
+  hide?: boolean | Func<Promise<boolean> | boolean>//(() => boolean | Promise<boolean>)
 }
 
 export type IMenuButton = IMenuButtonState & {

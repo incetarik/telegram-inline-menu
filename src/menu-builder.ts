@@ -334,9 +334,15 @@ export class MenuBuilder {
    * @param {string} menuText The text of the menu itself (message).
    * @param {string} buttonText The text of the button that will navigate to the menu.
    * @param {string} [menuId] The optional ID of the menu.
-   * @param {string} [buttonIdOrIsFull] The optional ID of the button.
-   * @param {boolean} [isButtonFullOrHidden] Indicates whether the button is full.
-   * @param {boolean} [isButtonHidden] Indicates whether the button is hidden.
+   * @param {string | boolean | Func<Promise<boolean> | boolean>} [buttonIdOrIsFull] The 
+   * optional ID of the button.
+   * 
+   * @param {boolean | Func<Promise<boolean> | boolean>} [isButtonFullOrHidden] Indicates 
+   * whether the button is full.
+   * 
+   * @param {boolean | Func<Promise<boolean> | boolean>} [isButtonHidden] Indicates 
+   * whether the button is hidden.
+   * 
    * @returns {MenuBuilder} The builder of the menu.
    * @throws When the text, buttonText, id, buttonId is not string or empty.
    * @throws
@@ -345,15 +351,27 @@ export class MenuBuilder {
     menuText: string,
     buttonText: string,
     menuId?: string,
-    buttonIdOrIsFull?: string | boolean,
-    isButtonFullOrHidden?: boolean,
-    isButtonHidden?: boolean
+    buttonIdOrIsFull?: string | boolean | Func<Promise<boolean> | boolean>,
+    isButtonFullOrHidden?: boolean | Func<Promise<boolean> | boolean>,
+    isButtonHidden?: boolean | Func<Promise<boolean> | boolean>
   ): MenuBuilder
 
+  /**
+   * Adds a hidden button that is a navigation for another menu builder.
+   *
+   * @param {string} menuText The text of the menu itself (message).
+   * @param {string} menuId The ID of the menu.
+   * @param {boolean | Func<Promise<boolean> | boolean>} isFull Indicates whether
+   *  the button is full.
+   * 
+   * @param {true} hidden Indicates the hidden status.
+   * @returns {MenuBuilder} The builder of the menu.
+   * @memberof MenuBuilder
+   */
   menu(
     menuText: string,
     menuId: string,
-    isFull: boolean,
+    isFull: boolean | Func<Promise<boolean> | boolean>,
     hidden: true,
   ): MenuBuilder
 
@@ -362,10 +380,18 @@ export class MenuBuilder {
    *
    * @param {(string | MenuOpts)} menuText The options or the menu text.
    * @param {string} [buttonTextOrMenuId] The button text or the ID of the menu.
-   * @param {(string | boolean)} [menuIdOrIsFull] The menu ID or is full.
-   * @param {(string | boolean)} [buttonIdOrHidden] The button ID or is hidden.
-   * @param {boolean} [isFullOrHidden] Indicates whether the button is full.
-   * @param {boolean} [isHidden] Indicates whether the button is hidden.
+   * @param {(string | boolean | Func<Promise<boolean> | boolean>)} [menuIdOrIsFull] The
+   * menu ID or is full.
+   *
+   * @param {(string | boolean | Func<Promise<boolean> | boolean>)} [buttonIdOrHidden] The
+   * button ID or is hidden.
+   *
+   * @param {boolean | Func<Promise<boolean> | boolean>} [isFullOrHidden] Indicates
+   * whether the button is full.
+   *
+   * @param {boolean | Func<Promise<boolean> | boolean>} [isHidden] Indicates
+   * whether the button is hidden.
+   *
    * @returns {MenuBuilder} The builder of the menu.
    * @memberof MenuBuilder
    * @throws When the text, buttonText, id, buttonId is not string or empty.
@@ -373,10 +399,10 @@ export class MenuBuilder {
   menu(
     menuText: string | MenuOpts,
     buttonTextOrMenuId?: string,
-    menuIdOrIsFull?: string | boolean,
-    buttonIdOrHidden?: string | boolean,
-    isFullOrHidden?: boolean,
-    isHidden?: boolean
+    menuIdOrIsFull?: string | boolean | Func<Promise<boolean> | boolean>,
+    buttonIdOrHidden?: string | boolean | Func<Promise<boolean> | boolean>,
+    isFullOrHidden?: boolean | Func<Promise<boolean> | boolean>,
+    isHidden?: boolean | Func<Promise<boolean> | boolean>
   ): MenuBuilder {
     if (typeof menuText === 'object') {
       const {
@@ -849,12 +875,12 @@ export class MenuBuilder {
           if (typeof navigate === 'string' || typeof navigate === 'number') {
             builder!
               .navigation(text, navigate as string, id)
-              .setFull(full)
-              .setHide(hide)
+              .setFull(full as boolean)
+              .setHide(hide as boolean)
               .end()
           }
           else {
-            const btn = builder!.button(text, id).setFull(full).setHide(hide)
+            const btn = builder!.button(text, id).setFull(full as boolean).setHide(hide as boolean)
 
             if (typeof url === 'string') {
               btn.setUrl(url)
