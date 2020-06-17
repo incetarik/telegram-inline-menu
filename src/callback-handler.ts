@@ -370,14 +370,14 @@ class CallbackQueryHandler {
     }
 
     let isUpdating = menu.hasChange(Change.Update)
-    const { buttons: oldButtons } = menu
+    const { buttons: oldButtons, text: oldText } = menu
+    const previousLength = Object.keys(oldButtons).length
     const builtMenu = await menu.toMenu()
 
     if (isUpdating) {
       if (this._activeMenu) {
-        const { text } = this._activeMenu
-
-        if (text === builtMenu.text) {
+        if (oldText === builtMenu.text) {
+          if (previousLength !== builtMenu.buttons.length)
           for (const key in oldButtons) {
             const button = oldButtons[ key ]
 
