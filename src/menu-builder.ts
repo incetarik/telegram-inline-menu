@@ -710,28 +710,69 @@ export class MenuBuilder {
     this.changeFlags |= change
   }
 
+  /**
+   * Detaches the menu from its parent.
+   *
+   * - Deletes itself from internal shared objects.
+   * - Clears collected value stack.
+   * - Deletes itself from parent's children.
+   * - Updates the indexes of siblings coming after itself.
+   *
+   * @private
+   * @memberof MenuBuilder
+   */
   private _detach() {
-    const { _parent } = this
-    if (_parent) {
-      const index = _parent._children!.indexOf(this)
-      if (index >= 0) {
-        _parent._children!.splice(index, 1)
-      }
-    }
-
     delete this._menuById[ this.id ]
     delete this._menuByPath[ this.path ]
-    const index = this._menuByIndex.indexOf(this, this.index - 1)
-    if (index >= 0) {
-      this._menuByIndex.splice(index, 1)
-    }
+
+    let index = this._menuByIndex.indexOf(this, this.index - 1)
+    if (index >= 0) { this._menuByIndex.splice(index, 1) }
 
     this[ '_getValueStack' ]().splice(0)
 
     //@ts-ignore
+    this._menuById = undefined
+    //@ts-ignore
+    this._menuByIndex = undefined
+    //@ts-ignore
+    this._menuByPath = undefined
+    //@ts-ignore
+    this.rootMenu = undefined
+
+    const { _parent: parent } = this
+    if (!parent) { return }
+
+    const siblings = parent._children!
+    index = siblings.indexOf(this)
+
+    //@ts-ignore
     this._parent = undefined
+
+    if (index < 0) { return }
+    siblings.splice(index, 1)
+    const threshold = index
+
+    for (const limit = siblings.length; index < limit; ++index) {
+      const child = siblings[ index ]
+      if (child.index < threshold) { continue }
+
+      //@ts-ignore
+      --child.index
+  }
   }
 
+  /**
+   * Attaches the menu to another menu as a child of that menu.
+   *
+   * - Updates the parent of this menu.
+   * - Updates internal shared objects from parent menu.
+   * - Inserts this menu to parent's children.
+   * - Updates index by the parent's children.
+   *
+   * @private
+   * @param {MenuBuilder} to The parent menu builder.
+   * @memberof MenuBuilder
+   */
   private _attach(to: MenuBuilder) {
     //@ts-ignore
     this._parent = to
