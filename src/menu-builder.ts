@@ -647,6 +647,40 @@ export class MenuBuilder {
         return this._menu
       }
     }
+    else if (SYM_DYNAMIC_MENU_BUILDER in this) {
+      //@ts-ignore
+      if (!this[ SYM_FIRST_DYNAMIC_DRAW ]) {
+        //@ts-ignore
+        const builder = this[ SYM_DYNAMIC_MENU_BUILDER ]
+        const layoutOrBuilder: MenuBuilder | IMenu = await builder()
+        let builtMenu: MenuBuilder
+        if (layoutOrBuilder instanceof MenuBuilder) {
+          builtMenu = layoutOrBuilder
+        }
+        else if (typeof layoutOrBuilder === 'object') {
+          layoutOrBuilder.id = this.id
+          builtMenu = MenuBuilder.fromObject(layoutOrBuilder)
+          Object.defineProperty(builtMenu, SYM_DYNAMIC_MENU_BUILDER, {
+            configurable: false,
+            enumerable: false,
+            value: builder
+          })
+        }
+        else {
+          throw new Error('Built menu was not a layout object or menu builder.')
+        }
+
+        this.text = builtMenu.text
+        //@ts-ignore
+        this._layout = builtMenu._layout
+        //@ts-ignore
+        this.buttons = builtMenu.buttons
+      }
+      else {
+        //@ts-ignore
+        this[ SYM_FIRST_DYNAMIC_DRAW ] = false
+      }
+    }
 
     const { text, id, buttons } = this
 
