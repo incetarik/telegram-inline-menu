@@ -382,7 +382,8 @@ class CallbackQueryHandler {
 
             const hasChange = builtMenu.buttons.some(cols => {
               return cols.some(item => {
-                if (button.id !== item.callback_data) { return false }
+                const idFromCallback = item.callback_data.split('/').pop()
+                if (button.id !== idFromCallback) { return false }
                 if (button.text !== item.text) { return true }
                 if (!button.isPure) { return true }
                 if (button.hide !== item.hide) { return true }
