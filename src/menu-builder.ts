@@ -26,7 +26,6 @@ export class MenuBuilder {
   private readonly _menuById!: Dictionary<MenuBuilder>
   private readonly _menuByIndex!: MenuBuilder[]
   private readonly _menuByPath!: Dictionary<MenuBuilder>
-  private readonly _dynamicBuilder?: Func<MenuBuilder>
 
   /**
    * The root menu of this menu group.
@@ -109,7 +108,8 @@ export class MenuBuilder {
    * @memberof MenuBuilder
    */
   get isCreatedByFunction() {
-    return typeof this._dynamicBuilder === 'function'
+    //@ts-ignore
+    return typeof this[ SYM_DYNAMIC_MENU_BUILDER ] === 'function'
   }
 
   /**
@@ -336,15 +336,15 @@ export class MenuBuilder {
    * @param {string} menuText The text of the menu itself (message).
    * @param {string} buttonText The text of the button that will navigate to the menu.
    * @param {string} [menuId] The optional ID of the menu.
-   * @param {string | boolean | Func<Promise<boolean> | boolean>} [buttonIdOrIsFull] The 
+   * @param {string | boolean | Func<Promise<boolean> | boolean>} [buttonIdOrIsFull] The
    * optional ID of the button.
-   * 
-   * @param {boolean | Func<Promise<boolean> | boolean>} [isButtonFullOrHidden] Indicates 
+   *
+   * @param {boolean | Func<Promise<boolean> | boolean>} [isButtonFullOrHidden] Indicates
    * whether the button is full.
-   * 
-   * @param {boolean | Func<Promise<boolean> | boolean>} [isButtonHidden] Indicates 
+   *
+   * @param {boolean | Func<Promise<boolean> | boolean>} [isButtonHidden] Indicates
    * whether the button is hidden.
-   * 
+   *
    * @returns {MenuBuilder} The builder of the menu.
    * @throws When the text, buttonText, id, buttonId is not string or empty.
    * @throws
@@ -365,7 +365,7 @@ export class MenuBuilder {
    * @param {string} menuId The ID of the menu.
    * @param {boolean | Func<Promise<boolean> | boolean>} isFull Indicates whether
    *  the button is full.
-   * 
+   *
    * @param {true} hidden Indicates the hidden status.
    * @returns {MenuBuilder} The builder of the menu.
    * @memberof MenuBuilder
@@ -634,6 +634,27 @@ export class MenuBuilder {
   }
 
   /**
+   * Builds the menu dynamically from the given dynamic menu.
+   *
+   * @param {boolean} [returnsItselfIfNotDynamic=false] Indicates whether the
+   * menu should return its own instance if there is no builder function.
+   *
+   * @returns {Promise<MenuBuilder | undefined>} The promise of the menu
+   * builder.
+   *
+   * @memberof MenuBuilder
+   */
+  async buildAnotherInstance(returnsItselfIfNotDynamic: boolean = false): Promise<MenuBuilder | undefined> {
+    if (this.isCreatedByFunction) {
+      //@ts-ignore
+      return await this[ SYM_DYNAMIC_MENU_BUILDER ]()
+    }
+    else if (returnsItselfIfNotDynamic) {
+      return this
+    }
+  }
+
+  /**
    * Builds the menu and returns it.
    *
    * @param {boolean} [soft=false] Indicator determines whether the `changeFlags`
@@ -665,6 +686,7 @@ export class MenuBuilder {
           Object.defineProperty(builtMenu, SYM_DYNAMIC_MENU_BUILDER, {
             configurable: false,
             enumerable: false,
+            writable: true,
             value: builder
           })
         }

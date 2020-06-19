@@ -1,3 +1,16 @@
+# 0.1.4
+## Added
+- `MenuBuilder.buildAnotherInstance()` function to build another instance of
+the same menu if the menu itself is created by a function. This will cause the
+function to be executed again to generate the same menu through the function.
+
+## Fixed
+- Dynamically generated menus (by a function) might not be updated if any of
+its buttons of the menu returns `{ update: true }`.
+
+## Changed
+- Improved change detection of a dynamically generated menu.
+
 # 0.1.2
 ## Fixed
 - Updating a dynamic menu from a button is not updating the menu due to the

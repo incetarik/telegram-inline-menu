@@ -7,7 +7,7 @@ import { MenuItemBuilder } from './menu-item-builder'
 
 import type { ButtonActionResult, OnButtonPressFunction, OnGeneratorStepHandler, OnMethodMissingHandler, IDynamicMenuContext } from './types'
 import { nanoid } from 'nanoid'
-import { SYM_VALUE_STACK } from './commons'
+import { SYM_VALUE_STACK, SYM_DYNAMIC_MENU_BUILDER } from './commons'
 
 const SYM_EXEC_SUCCESS = Symbol('@@buttonActionSuccess')
 const SYM_EXEC_FAIL = Symbol('@@buttonActionFailure')
@@ -15,7 +15,7 @@ const SYM_EXEC_FAIL = Symbol('@@buttonActionFailure')
 class CallbackQueryHandler {
   private _isAttached = false
   private _menuMap: WeakMap<any, Dictionary<MenuBuilder>> = new WeakMap()
-  private _activeMenuMap: WeakMap<any, MenuBuilder> = new WeakMap()
+  private _activeMenusOfKeepers: WeakMap<any, MenuBuilder> = new WeakMap()
   private _keeper: any
   private _onMethodMissing?: OnMethodMissingHandler
   private _onGeneratorValueHandler?: OnGeneratorStepHandler
@@ -47,17 +47,24 @@ class CallbackQueryHandler {
    * @type {(MenuBuilder | undefined)}
    * @memberof CallbackQueryHandler
    */
-  get activeMenuMap(): MenuBuilder | undefined {
-    return this._activeMenuMap.get(this._keeper)
+  get activeMenu(): MenuBuilder | undefined {
+    return this._activeMenusOfKeepers.get(this._keeper)
   }
 
-  set activeMenuMap(to: MenuBuilder | undefined) {
+  set activeMenu(to: MenuBuilder | undefined) {
     if (!to) {
-      this._activeMenuMap.delete(this._keeper)
+      this._activeMenusOfKeepers.delete(this._keeper)
       return
     }
 
-    this._activeMenuMap.set(this._keeper, to)
+    this._activeMenusOfKeepers.set(this._keeper, to)
+
+    if (!to.isCreatedByFunction) { return }
+    if (!this._menuMap.has(this._keeper)) { return }
+    const menuDict = this._menuMap.get(this._keeper)!
+    if (to.id in menuDict) {
+      menuDict[ to.id ] = to
+    }
   }
 
   /**
@@ -212,7 +219,7 @@ class CallbackQueryHandler {
    * @memberof CallbackQueryHandler
    */
   async closeMenu(ctx: ContextMessageUpdate, withText: string, justRemoveMarkup: boolean = false) {
-    this.activeMenuMap = undefined
+    this.activeMenu = undefined
 
     if (withText) {
       if (justRemoveMarkup) {
@@ -371,13 +378,11 @@ class CallbackQueryHandler {
 
     let isUpdating = menu.hasChange(Change.Update)
     const { buttons: oldButtons, text: oldText } = menu
-    const previousLength = Object.keys(oldButtons).length
     const builtMenu = await menu.toMenu()
 
     if (isUpdating) {
       if (this._activeMenu) {
         if (oldText === builtMenu.text) {
-          if (previousLength !== builtMenu.buttons.length)
           for (const key in oldButtons) {
             const button = oldButtons[ key ]
 
@@ -398,17 +403,18 @@ class CallbackQueryHandler {
             }
           }
 
-          if (!menu.isCreatedByFunction) { return }
-          const builder = await menu[ '_dynamicBuilder' ]!()
-          const dynamicMenu = await builder.toMenu()
-          await ctx.editMessageReplyMarkup(Markup.inlineKeyboard(dynamicMenu.buttons))
-          this.activeMenuMap = builder
-          return
+          const dynamicMenuBuilder = await menu.buildAnotherInstance()
+          if (dynamicMenuBuilder) {
+            const dynamicMenu = await dynamicMenuBuilder.toMenu(true)
+            await ctx.editMessageReplyMarkup(Markup.inlineKeyboard(dynamicMenu.buttons))
+            this.activeMenu = dynamicMenuBuilder
+            return
+          }
         }
       }
     }
 
-    this.activeMenuMap = menu
+    this.activeMenu = menu
     await ctx.editMessageText(builtMenu.text, Extra.markup(Markup.inlineKeyboard(builtMenu.buttons)))
   }
 
@@ -530,7 +536,7 @@ class CallbackQueryHandler {
       builtMenu = MenuBuilder.fromObject(menuLayout)
 
       //@ts-ignore
-      builtMenu[ '_dynamicBuilder' ] = async function dynamicMenuBuilder() {
+      builtMenu[ SYM_DYNAMIC_MENU_BUILDER ] = async function dynamicMenuBuilder() {
         const newLayout = await menu.call(dynamicContext, dynamicContext.id, currentValues)
         newLayout.id = dynamicContext.id
 
@@ -539,7 +545,7 @@ class CallbackQueryHandler {
         //@ts-ignore
         newMenu[ 'changeFlags' ] = Change.Draw
         //@ts-ignore
-        newMenu[ '_dynamicBuilder' ] = dynamicMenuBuilder
+        newMenu[ SYM_DYNAMIC_MENU_BUILDER ] = dynamicMenuBuilder
 
         button[ 'dynamicMenu' ] = newMenu
         newMenu[ '_attach' ](parent)
