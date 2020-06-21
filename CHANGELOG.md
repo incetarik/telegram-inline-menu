@@ -1,3 +1,10 @@
+# 0.1.5
+## Added
+- `CallbackQueryHandler.{setQueryHandler,setOnUnhandledQueryHandler}` functions
+to let other structures use/pipe the `.on('callback_query')` handler set by the
+`CBHandler.attach(ref)`. So that there would still be a way to process the
+context of the message while still letting the `CBHandler` do its work.
+
 # 0.1.4
 ## Added
 - `MenuBuilder.buildAnotherInstance()` function to build another instance of

@@ -24,6 +24,8 @@ class CallbackQueryHandler {
   private _onError?: (e: Error) => void
   private _onMenuDelete?: (id: string) => void
   private _onMenuClose?: (menuBuilder: MenuBuilder | undefined) => void
+  private _onCallbackQuery?: (ctx: ContextMessageUpdate) => void
+  private _onUnhandledCallbackQuery?: (ctx: ContextMessageUpdate) => void
 
   /**
    * Determines whether this callback query handler is strict or not.
@@ -82,6 +84,7 @@ class CallbackQueryHandler {
     this._isAttached = true
     const that = this
     telegraf.on('callback_query', async function onCallbackQuery(ctx) {
+      that._onCallbackQuery?.(ctx)
       const { callbackQuery } = ctx
       if (!callbackQuery) { return }
 
@@ -89,14 +92,20 @@ class CallbackQueryHandler {
       if (!data) { return }
 
       const menuDict = that._menuMap.get(that._keeper)
-      if (!menuDict) { return }
+      if (!menuDict) {
+        that._onUnhandledCallbackQuery?.(ctx)
+        return
+      }
 
       const segments = data.split('/').slice(1)
       const menuId = segments.shift()!
 
       let targetMenu: MenuBuilder | undefined = menuDict[ menuId ]
       const button = targetMenu?.getMenuItemByPath(data)
-      if (!button) { return }
+      if (!button) {
+        that._onUnhandledCallbackQuery?.(ctx)
+        return
+      }
 
       targetMenu = button.parent
       that._activeMenu = targetMenu
@@ -326,6 +335,28 @@ class CallbackQueryHandler {
    */
   setOnMenuClose(handler: (menuBuilder: MenuBuilder | undefined) => void) {
     this._onMenuClose = handler
+  }
+
+  /**
+   * Sets a handler whenever the `callback_query` occurs even if it is handled
+   * by this instance or not.
+   *
+   * @param {(ctx: ContextMessageUpdate) => void} handler The handler.
+   * @memberof CallbackQueryHandler
+   */
+  setQueryHandler(handler: (ctx: ContextMessageUpdate) => void) {
+    this._onCallbackQuery = handler
+  }
+
+  /**
+   * Sets a handler whenever the `callback_query` occurs and it is not handled
+   * by this instance.
+   *
+   * @param {(ctx: ContextMessageUpdate) => void} handler The handler.
+   * @memberof CallbackQueryHandler
+   */
+  setUnhandledQueryHandler(handler: (ctx: ContextMessageUpdate) => void) {
+    this._onUnhandledCallbackQuery = handler
   }
 
   private async handleGenerator(ctx: ContextMessageUpdate, generator: Generator | AsyncGenerator, button: MenuItemBuilder, targetMenu: MenuBuilder) {

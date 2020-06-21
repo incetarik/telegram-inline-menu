@@ -8,6 +8,10 @@ by setting `navigate` property to a `path` of a menu or using relative
 navigation such as "`..`" to go to parent menu, or numberic index indicating
 the creation order of the menu or relative negative index.
 
+**NOTE**: To track last changes, please see the
+[CHANGELOG](https://github.com/incetarik/telegram-inline-menu/blob/master/CHANGELOG.md)
+file.
+
 The example has many examples of usages inside.
 
 # Examples
