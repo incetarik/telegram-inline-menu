@@ -100,14 +100,14 @@ class CallbackQueryHandler {
       const segments = data.split('/').slice(1)
       const menuId = segments.shift()!
 
-      let targetMenu: MenuBuilder | undefined = menuDict[ menuId ]
-      const button = targetMenu?.getMenuItemByPath(data)
+      const previousMenu: MenuBuilder | undefined = menuDict[ menuId ]
+      const button = previousMenu?.getMenuItemByPath(data)
       if (!button) {
         that._onUnhandledCallbackQuery?.(ctx)
         return
       }
 
-      targetMenu = button.parent
+      const targetMenu = button.parent
       that._activeMenu = targetMenu
 
       try {
@@ -142,6 +142,12 @@ class CallbackQueryHandler {
         }
 
         const returnValue = await that.execButtonAction(value, ctx, button, targetMenu)
+        if (menuId === targetMenu.id) {
+          if (previousMenu.buttons !== targetMenu.buttons) {
+            menuDict[ menuId ] = targetMenu
+          }
+        }
+
         that._activeMenu = undefined
         return returnValue
       }
