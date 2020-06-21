@@ -1,11 +1,14 @@
 {
-  "name": "telegram-inline-menu",
+  "name": "@incetarik/telegram-inline-menu",
   "version": "0.1.5",
   "description": "A library for providing inline menus with an ease for Telegraf library based applications.",
   "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepublish": "tsc"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   },
   "repository": {
     "type": "git",
