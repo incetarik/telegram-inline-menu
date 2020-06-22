@@ -1,30 +1,63 @@
+import { nanoid } from 'nanoid'
 import Telegraf, { ContextMessageUpdate, Extra, Markup } from 'telegraf'
+import { ExtraEditMessage } from 'telegraf/typings/telegram-types'
 
 import { Change } from './change.enum'
+import { SYM_DYNAMIC_MENU_BUILDER, SYM_VALUE_STACK } from './commons'
 import { isButtonActionResultLike, isGenerator, isPromise } from './helpers'
 import { MenuBuilder } from './menu-builder'
 import { MenuItemBuilder } from './menu-item-builder'
 
-import type { ButtonActionResult, OnButtonPressFunction, OnGeneratorStepHandler, OnMethodMissingHandler, IDynamicMenuContext } from './types'
-import { nanoid } from 'nanoid'
-import { SYM_VALUE_STACK, SYM_DYNAMIC_MENU_BUILDER } from './commons'
+import type { ButtonActionResult, IDynamicMenuContext, OnButtonPressFunction, OnGeneratorStepHandler, OnMethodMissingHandler } from './types'
 
 const SYM_EXEC_SUCCESS = Symbol('@@buttonActionSuccess')
 const SYM_EXEC_FAIL = Symbol('@@buttonActionFailure')
+
+type IParamCloseMenu = {
+  /**
+   * The Context.
+   *
+   * @type {ContextMessageUpdate}
+   */
+  ctx: ContextMessageUpdate,
+
+  /**
+   * The text to be shown after closing the menu.
+   *
+   * @type {string}
+   */
+  withText?: string,
+
+  /**
+   * The extras of the text.
+   *
+   * @type {ExtraEditMessage}
+   */
+  extra?: ExtraEditMessage,
+
+  /**
+   * Indicates whether to remove the markup only or not.
+   *
+   * @type {boolean}
+   */
+  justRemoveMarkup?: boolean
+}
 
 class CallbackQueryHandler {
   private _isAttached = false
   private _menuMap: WeakMap<any, Dictionary<MenuBuilder>> = new WeakMap()
   private _activeMenusOfKeepers: WeakMap<any, MenuBuilder> = new WeakMap()
+
   private _keeper: any
-  private _onMethodMissing?: OnMethodMissingHandler
-  private _onGeneratorValueHandler?: OnGeneratorStepHandler
-  private _generatorHandler?: OnGeneratorStepHandler
   private _activeMenu?: MenuBuilder
+  private _generatorHandler?: OnGeneratorStepHandler
+
   private _onError?: (e: Error) => void
   private _onMenuDelete?: (id: string) => void
-  private _onMenuClose?: (menuBuilder: MenuBuilder | undefined) => void
+  private _onMethodMissing?: OnMethodMissingHandler
+  private _onGeneratorValueHandler?: OnGeneratorStepHandler
   private _onCallbackQuery?: (ctx: ContextMessageUpdate) => void
+  private _onMenuClose?: (menuBuilder: MenuBuilder | undefined) => void
   private _onUnhandledCallbackQuery?: (ctx: ContextMessageUpdate) => void
 
   /**
@@ -215,33 +248,92 @@ class CallbackQueryHandler {
    *
    * @param {ContextMessageUpdate} ctx Context.
    * @param {MenuBuilder} menuBuilder MenuBuilder to build the menu.
+   * @param {ExtraEditMessage} [extra] Extras of the menu.
    * @returns The value returned from `ctx.reply`.
    * @memberof CallbackQueryHandler
    */
-  async showMenu(ctx: ContextMessageUpdate, menuBuilder: MenuBuilder) {
+  async showMenu(ctx: ContextMessageUpdate, menuBuilder: MenuBuilder, extra?: ExtraEditMessage) {
     const menu = await menuBuilder.toMenu()
     this.registerMenu(menuBuilder)
-    return await ctx.reply(menuBuilder.text, Extra.markup(Markup.inlineKeyboard(menu.buttons)))
+    extra = mergeObjects(menuBuilder[ '_extra' ], extra, Extra.markup(Markup.inlineKeyboard(menu.buttons)))
+    return await ctx.reply(menuBuilder.text, extra)
   }
 
   /**
    * Closes/removes a menu with an optionally given text.
    *
    * @param {ContextMessageUpdate} ctx Context.
-   * @param {string} withText The text to update the message.
+   * @param {string} [withText] The text to update the message.
    * @param {boolean} [justRemoveMarkup=false] Indicates whether only the
    * markup should be removed or not.
+   *
+   * @param {ExtraEditMessage} [extra] The extra message to be applied only if
+   * `withText` is given.
+   *
+   * @returns {Promise<void>} The promise of this action.
    * @memberof CallbackQueryHandler
    */
-  async closeMenu(ctx: ContextMessageUpdate, withText: string, justRemoveMarkup: boolean = false) {
-    this.activeMenu = undefined
+  async closeMenu(ctx: ContextMessageUpdate, withText?: string, justRemoveMarkup?: boolean, extra?: ExtraEditMessage): Promise<void>;
+
+  /**
+   * Closes/removes a menu with an optionally given text.
+   *
+   * @param {ContextMessageUpdate} ctx Context.
+   * @param {string} [withText] the text to update the message.
+   * @param {ExtraEditMessage} [extra] The extra of the message to be applied
+   * only if `withText` is given.
+   *
+   * @returns {Promise<void>} The promise of this action.
+   * @memberof CallbackQueryHandler
+   */
+  async closeMenu(ctx: ContextMessageUpdate, withText?: string, extra?: ExtraEditMessage): Promise<void>;
+
+  /**
+   * Closes/removes a menu with given option parameter.
+   *
+   * @param {IParamCloseMenu} params The option parameter.
+   * @returns {Promise<void>} The promise of this action.
+   * @memberof CallbackQueryHandler
+   */
+  async closeMenu(params: IParamCloseMenu): Promise<void>
+
+  async closeMenu(ctxOrOpts: ContextMessageUpdate | IParamCloseMenu, withText?: string, extraOrJustRemoveMarkup?: boolean | ExtraEditMessage, extra?: ExtraEditMessage) {
+    let currentText = this.activeMenu?.text
+
+    let ctx: ContextMessageUpdate
+    let justRemoveMarkup = false
+
+    if ('ctx' in ctxOrOpts) {
+      ctx = ctxOrOpts.ctx
+      withText = ctxOrOpts.withText
+      justRemoveMarkup = ctxOrOpts.justRemoveMarkup ?? false
+      extra = ctxOrOpts.extra
+    }
+    else if (typeof extraOrJustRemoveMarkup === 'boolean') {
+      ctx = ctxOrOpts
+      justRemoveMarkup = extraOrJustRemoveMarkup
+    }
+    else if (typeof extraOrJustRemoveMarkup === 'object') {
+      ctx = ctxOrOpts
+      extra = extraOrJustRemoveMarkup
+    }
+    else {
+      ctx = ctxOrOpts
+    }
 
     if (withText) {
       if (justRemoveMarkup) {
         await ctx.editMessageReplyMarkup(Markup.inlineKeyboard([]))
       }
       else {
-        await ctx.editMessageText(withText, Extra.markup(Markup.inlineKeyboard([])))
+        withText = withText.trim()
+        if (withText === currentText) {
+          await ctx.editMessageReplyMarkup(Markup.inlineKeyboard([]))
+        }
+        else {
+          extra = mergeObjects(extra, Extra.markup(Markup.inlineKeyboard([])))
+          await ctx.editMessageText(withText, extra)
+        }
       }
     }
     else if (!justRemoveMarkup) {
@@ -254,6 +346,7 @@ class CallbackQueryHandler {
       await ctx.editMessageReplyMarkup(Markup.inlineKeyboard([]))
     }
 
+    this.activeMenu = undefined
     this._onMenuClose?.(this._activeMenu)
   }
 
@@ -452,7 +545,8 @@ class CallbackQueryHandler {
     }
 
     this.activeMenu = menu
-    await ctx.editMessageText(builtMenu.text, Extra.markup(Markup.inlineKeyboard(builtMenu.buttons)))
+    const extra = mergeObjects(menu[ '_extra' ], Extra.markup(Markup.inlineKeyboard(builtMenu.buttons)))
+    await ctx.editMessageText(builtMenu.text, extra)
   }
 
   private async updateMenuContent(ctx: ContextMessageUpdate, menu: MenuBuilder) {
@@ -611,6 +705,10 @@ class CallbackQueryHandler {
       await CBHandler.setMenuActive(ctx, targetMenu)
     }
     else if ((button.parent.changeFlags & Change.Text) === Change.Text) {
+      if ('extra' in action) {
+        button.parent.setExtra(action.extra)
+      }
+
       await CBHandler.setMenuActive(ctx, button.parent)
     }
     else if (targetMenu.changeFlags) {
@@ -670,4 +768,29 @@ function makeDynamicMenuContext(parent: MenuBuilder, id = nanoid(12)): IDynamicM
     },
     willDetach: true,
   }
+}
+
+function mergeObjects<T = any>(...extras: (T | undefined)[]) {
+  return extras.reduce<T>((prev, curr) => {
+    if (typeof curr !== 'object') { return prev }
+
+    for (const key in curr) {
+      if (typeof curr[ key ] === 'object') {
+        if (typeof prev[ key ] === 'object') {
+          if (Array.isArray(curr[ key ])) {
+            prev[ key ] = curr[ key ]
+          }
+          else {
+            prev[ key ] = mergeObjects(prev[ key ], curr[ key ])
+          }
+
+          continue
+        }
+      }
+
+      prev[ key ] = curr[ key ]
+    }
+
+    return prev!
+  }, {} as T)
 }

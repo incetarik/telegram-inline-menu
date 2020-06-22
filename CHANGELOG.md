@@ -1,3 +1,8 @@
+# 0.1.7
+## Added
+- `extra` as `ExtraEditMessage` to menus and their builders and button actions
+for updating the `extra` of the message related to the menu.
+
 # 0.1.6
 ## Fixed
 - The buttons may not work after a several navigations.
