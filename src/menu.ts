@@ -1,4 +1,5 @@
 import { CallbackButton } from 'telegraf'
+import { ExtraEditMessage } from 'telegraf/typings/telegram-types'
 
 export class Menu {
   private _rootMenu?: Menu
@@ -12,6 +13,7 @@ export class Menu {
    * @param {string} path The path of the menu.
    * @param {boolean} isPure Indicates whether the menu is pure or not.
    * @param {number} index The index of the menu.
+   * @param {ExtraEditMessage} [extra] The extras of the menu text.
    * @memberof Menu
    */
   constructor (
@@ -22,6 +24,7 @@ export class Menu {
     public readonly path: string,
     public readonly isPure: boolean,
     public readonly index: number,
+    public readonly extra?: ExtraEditMessage
   ) { }
 
   /**
