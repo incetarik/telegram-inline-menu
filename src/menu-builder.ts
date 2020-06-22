@@ -1,5 +1,8 @@
 import { nanoid } from 'nanoid'
 import { resolve } from 'path'
+import {
+  ExtraEditMessage, InlineKeyboardMarkup
+} from 'telegraf/typings/telegram-types'
 
 import { CBHandler } from './callback-handler'
 import { Change } from './change.enum'
@@ -19,6 +22,7 @@ export class MenuBuilder {
   private _children?: MenuBuilder[]
   private _menu?: Menu
   private _navigationTarget?: MenuBuilder
+  private _extra?: ExtraEditMessage
 
   //@ts-ignore
   private readonly _layout!: IMenu = {}
@@ -732,7 +736,7 @@ export class MenuBuilder {
     }
 
     const parentMenu = await this._parent?.toMenu()
-    const menu = new Menu(parentMenu, text, id, items, this.path, this.isPure, this.index)
+    const menu = new Menu(parentMenu, text, id, items, this.path, this.isPure, this.index, this._extra)
 
     if (!soft) {
       //@ts-ignore
@@ -741,6 +745,27 @@ export class MenuBuilder {
     }
 
     return menu
+  }
+
+  /**
+   * Sets extras of the menu text.
+   *
+   * @param {ExtraEditMessage} [extra] Extras of the menu text.
+   * @returns {MenuBuilder} The builder of the menu.
+   * @memberof MenuBuilder
+   */
+  setExtra(extra?: ExtraEditMessage): MenuBuilder {
+    if (typeof extra !== 'object') {
+      this._extra = extra
+      return this
+    }
+
+    if (typeof extra.reply_markup === 'object') {
+      delete (extra.reply_markup as InlineKeyboardMarkup)[ 'inline_keyboard' ]
+    }
+
+    this._extra = extra
+    return this
   }
 
   /**
@@ -912,7 +937,7 @@ export class MenuBuilder {
       throw new Error(`Unexpected type of menu source: "${typeof source}"`)
     }
 
-    const { buttons, text, id: customMenuId = 'main' } = source
+    const { buttons, text, id: customMenuId = 'main', extra } = source
     let isSubMenu = false
     if (builder) {
       builder = builder.menu(
@@ -924,11 +949,14 @@ export class MenuBuilder {
         subMenu!.hide
       )
 
+      builder.setExtra(extra)
+
       isSubMenu = true
     }
     else {
       //@ts-ignore
       builder = new MenuBuilder(text, customMenuId)
+      builder.setExtra(extra)
     }
 
     for (const id in buttons) {
