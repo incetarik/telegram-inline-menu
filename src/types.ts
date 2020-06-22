@@ -1,5 +1,5 @@
 import { ContextMessageUpdate } from 'telegraf'
-import { CallbackQuery } from 'telegraf/typings/telegram-types'
+import { CallbackQuery, ExtraEditMessage } from 'telegraf/typings/telegram-types'
 
 import { Menu } from './menu'
 
@@ -25,6 +25,14 @@ export type ButtonActionResult = undefined | void | {
    * @type {string}
    */
   text?: string
+
+  /**
+   * The extras of the menu text if it is updated with the `text`
+   * property of this object.
+   *
+   * @type {ExtraEditMessage}
+   */
+  extra?: ExtraEditMessage
 
   /**
    * Indicates whether the button should be full-wide (row) or not in the
@@ -215,6 +223,14 @@ export interface IMenu {
    * @memberof IMenu
    */
   text: string
+
+  /**
+   * Extras of the menu text.
+   *
+   * @type {ExtraEditMessage}
+   * @memberof IMenu
+   */
+  extra?: ExtraEditMessage
 
   /**
    * The buttons of the menu.
