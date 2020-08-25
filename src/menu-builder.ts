@@ -285,7 +285,6 @@ export class MenuBuilder {
   ) {
     this.id = id
     this._text = text
-    this.rootMenu = this
 
     if (id === '/') {
       this._path = '/'
@@ -295,6 +294,7 @@ export class MenuBuilder {
     this._menuById = _menuById = _parent?._menuById ?? {}
     this._menuByIndex = _menuByIndex = _parent?._menuByIndex ?? []
     this._menuByPath = _menuByPath = _parent?._menuByPath ?? {}
+    this.rootMenu = _parent?.rootMenu ?? this
 
     if (id in this._menuById) {
       throw new Error(`Menu with id "${id}" is previously defined`)
@@ -841,7 +841,7 @@ export class MenuBuilder {
 
       //@ts-ignore
       --child.index
-  }
+    }
   }
 
   /**
@@ -869,6 +869,9 @@ export class MenuBuilder {
 
     //@ts-ignore
     this._menuByPath = to._menuByPath
+
+    //@ts-ignore
+    this.rootMenu = to.rootMenu
 
     if (!Array.isArray(to[ '_children' ])) {
       to[ '_children' ] = []
